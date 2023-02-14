@@ -2,6 +2,7 @@ package genie
 
 import (
 	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -23,8 +24,8 @@ func (d Data) CountAllEntries() int {
 	return d.count
 }
 
-const (
-	whitespace = " \t"
+var (
+	whitespacePattern = regexp.MustCompile(`^[ \t]*$`)
 )
 
 func Parse(iniText string) (Data, error) {
@@ -40,21 +41,21 @@ func Parse(iniText string) (Data, error) {
 	// Parse text line by line.
 	for i, l := range strings.Split(iniText, "\n") {
 
-		// Trim all leading whitespace.
-		l = strings.TrimLeft(l, whitespace)
-
-		// Skip comment lines.
-		if strings.HasPrefix(l, "#") || l == "" {
+		// Skip empty, blank, or comment lines.
+		if l == "" || strings.HasPrefix(l, "#") || whitespacePattern.MatchString(l) {
 			continue
 		}
 
 		// Parse section header.
 		if strings.HasPrefix(l, "[") {
-			l = strings.TrimRight(l, whitespace)
+			l = strings.TrimRight(l, " \t")
 			if !strings.HasSuffix(l, "]") {
 				return Data{}, newError(i, "invalid section declaration")
 			}
 			section = l[1 : len(l)-1]
+			if section == "" || whitespacePattern.MatchString(section) {
+				return Data{}, newError(i, "invalid section name")
+			}
 			if strings.Contains(section, "[") || strings.Contains(section, "]") {
 				return Data{}, newError(i, "invalid section name")
 			}
@@ -72,7 +73,7 @@ func Parse(iniText string) (Data, error) {
 		if !strings.HasSuffix(key, " ") {
 			return Data{}, newError(i, "invalid delimiter sequence")
 		}
-		key = strings.Trim(key, whitespace)
+		key = strings.TrimRight(key, " ")
 		if strings.Contains(key, " ") || strings.Contains(key, "\t") {
 			return Data{}, newError(i, "invalid key")
 		}

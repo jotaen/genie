@@ -36,16 +36,6 @@ func TestParseFileWithEntryWithEmptyValue(t *testing.T) {
 	assert.Equal(t, "", result.Get("key2"))
 }
 
-func TestIgnoresRedundantWhiteSpaceOnKeySide(t *testing.T) {
-	result, err := Parse("" +
-		"     hello1      = world\n" +
-		"\t\thello2 = world\n" +
-		"")
-	require.Nil(t, err)
-	assert.Equal(t, "world", result.Get("hello1"))
-	assert.Equal(t, "world", result.Get("hello2"))
-}
-
 func TestTreatsValueLiterally(t *testing.T) {
 	result, err := Parse("" +
 		"key1 =     world     " + "\n" +
@@ -96,7 +86,7 @@ key = value
 hello = world
 foo = bar
 
-[section2]
+[section 2]
 test = 123
 
 [section3]
@@ -106,36 +96,27 @@ test = 123
 	assert.Equal(t, "value", result.GetFromSection("", "key"))
 	assert.Equal(t, "world", result.GetFromSection("section1", "hello"))
 	assert.Equal(t, "bar", result.GetFromSection("section1", "foo"))
-	assert.Equal(t, "123", result.GetFromSection("section2", "test"))
+	assert.Equal(t, "123", result.GetFromSection("section 2", "test"))
 }
 
-func TestSectionWithSurroundingWhitespace(t *testing.T) {
+func TestAlignmentOnKeySide(t *testing.T) {
+	result, err := Parse(`
+key         = 123
+another_key = 124
+`)
+	require.Nil(t, err)
+	assert.Equal(t, "123", result.Get("key"))
+	assert.Equal(t, "124", result.Get("another_key"))
+}
+
+func TestSectionWithTrailingWhitespace(t *testing.T) {
+	// This is only allowed because it doesn’t create any harm.
 	result, err := Parse("" +
-		"   [section]  \t " + "\n" +
+		"[section]  \t " + "\n" +
 		"key = value" +
 		"")
 	require.Nil(t, err)
 	assert.Equal(t, "value", result.GetFromSection("section", "key"))
-}
-
-func TestIgnoresLeadingWhitespace(t *testing.T) {
-	result, err := Parse(`
-          key = value
-      #FooBAR
-   [section1]
-         hello = world
- foo = bar
-
-  # Test 123
-    [section2]
-        test = 123
-`)
-	require.Nil(t, err)
-	assert.Equal(t, result.CountAllEntries(), 4)
-	assert.Equal(t, "value", result.GetFromSection("", "key"))
-	assert.Equal(t, "world", result.GetFromSection("section1", "hello"))
-	assert.Equal(t, "bar", result.GetFromSection("section1", "foo"))
-	assert.Equal(t, "123", result.GetFromSection("section2", "test"))
 }
 
 func TestHandlesAbsentOrEmptyKeysAndSectionsGracefully(t *testing.T) {
@@ -151,11 +132,12 @@ func TestHandlesAbsentOrEmptyKeysAndSectionsGracefully(t *testing.T) {
 	assert.Equal(t, "", result.GetFromSection("foo", "hello"))
 }
 
-func TestParseEmptyFile(t *testing.T) {
+func TestParseEmptyOrBlankFile(t *testing.T) {
 	for _, text := range []string{
 		"",
 		"  ",
 		"\n\n",
+		"  \n   \n    \n ",
 		"\r\n\n\n\r\n",
 	} {
 		result, err := Parse(text)
@@ -166,19 +148,41 @@ func TestParseEmptyFile(t *testing.T) {
 
 func TestErrorCases(t *testing.T) {
 	for _, text := range []string{
-		"foo",                  // Key without value
+		// General
+		"foo",   // Key without value
+		"  foo", // Key without value with leading whitespace
+		"\tfoo", // Key without value with leading whitespace
+
+		// Sections
 		"[section",             // Invalid section
 		"section]",             // Invalid section
-		"[section] # Comment?", // Illegal trailing comment
+		"[]",                   // Empty section name
+		"[ ]",                  // Blank section name
+		"[\t]",                 // Blank section name
+		"[section] # Comment?", // Trailing comment
+		"[section] Text?",      // Trailing text
+		" [section]",           // Leading whitespace
+		"\t[section]",          // Leading whitespace
 		"[[section]]",          // Section name itself contains square bracket
 		"[se]ct[ion]",          // Section name itself contains square bracket
 		"[key] = 123",          // Key cannot look like section
-		"key= 123",             // Missing space delimiter after key
-		"key =123",             // Missing space delimiter before value
-		"k e y = 123",          // Key with whitespace
-		"k\te\ty = 123",        // Key with whitespace
+		"[key = 123",           // Key cannot start with square bracket
+
+		// Entries
+		"key= 123",      // Missing space delimiter after key
+		"key =123",      // Missing space delimiter before value
+		"key == 123",    // Invalid delimiter
+		"key != 123",    // Invalid delimiter
+		" key = 123",    // Leading whitespace
+		"\tkey = 123",   // Leading whitespace
+		"k e y = 123",   // Key with whitespace
+		"k\te\ty = 123", // Key with whitespace
+
+		// Comments
+		" # Comment",  // Leading whitespace
+		"\t# Comment", // Leading whitespace
 	} {
 		_, err := Parse(text)
-		require.Error(t, err)
+		require.Error(t, err, text)
 	}
 }
