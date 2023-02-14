@@ -5,9 +5,10 @@ Your friendly .ini config file parser, written in Go.
 ## Usage
 
 ```go
+package main
 import ("fmt"; "github.com/jotaen/genie")
 
-const iniText := `
+const iniText = `
 # Comment.
 key = value
 
