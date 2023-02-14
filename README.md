@@ -58,4 +58,4 @@ Lines can never start with whitespace.
 
 ## License
 
-[MIT](License.txt)
+[MIT](LICENSE.txt)
