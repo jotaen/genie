@@ -50,14 +50,14 @@ func Parse(iniText string) (Data, error) {
 		if strings.HasPrefix(l, "[") {
 			l = strings.TrimRight(l, " \t")
 			if !strings.HasSuffix(l, "]") {
-				return Data{}, newError(i, "invalid section declaration")
+				return Data{}, newError(i, "Invalid section declaration")
 			}
 			section = l[1 : len(l)-1]
 			if section == "" || whitespacePattern.MatchString(section) {
-				return Data{}, newError(i, "invalid section name")
+				return Data{}, newError(i, "Invalid section name")
 			}
 			if strings.Contains(section, "[") || strings.Contains(section, "]") {
-				return Data{}, newError(i, "invalid section name")
+				return Data{}, newError(i, "Invalid section name")
 			}
 			continue
 		}
@@ -65,23 +65,23 @@ func Parse(iniText string) (Data, error) {
 		// Parse key<>value pairs.
 		parts := strings.SplitN(l, "=", 2)
 		if len(parts) != 2 {
-			return Data{}, newError(i, "invalid key")
+			return Data{}, newError(i, "Invalid key")
 		}
 
 		// Process key.
 		key := parts[0]
 		if !strings.HasSuffix(key, " ") {
-			return Data{}, newError(i, "invalid delimiter sequence")
+			return Data{}, newError(i, "Invalid delimiter sequence")
 		}
 		key = strings.TrimRight(key, " ")
 		if strings.Contains(key, " ") || strings.Contains(key, "\t") {
-			return Data{}, newError(i, "invalid key")
+			return Data{}, newError(i, "Invalid key")
 		}
 
 		// Process value.
 		value := parts[1]
 		if (value != "" && value != " ") && !strings.HasPrefix(value, " ") {
-			return Data{}, newError(i, "invalid delimiter sequence")
+			return Data{}, newError(i, "Invalid delimiter sequence")
 		}
 		if strings.HasPrefix(value, " ") {
 			value = strings.TrimPrefix(value, " ")
@@ -99,5 +99,5 @@ func Parse(iniText string) (Data, error) {
 
 func newError(lineIndex int, msg string) error {
 	nr := strconv.Itoa(lineIndex + 1)
-	return errors.New("malformed syntax in line " + nr + ": " + msg)
+	return errors.New("Malformed syntax in line " + nr + ": " + msg)
 }
